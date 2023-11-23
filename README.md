@@ -4,7 +4,7 @@ Some handy bits and bobs for Houdini users
 ## Print SOP verb parameters
 When working with the new APEX graphs in Houdini 20, a lot of the "SOP verb" nodes have very opaque parameter menus, and it's hard to tell what settings to use.
 
-Place a temporary version of the same node in the SOP network (not in APEX), set it's parameters as you like, then plug it into a Python SOP with this code:
+Place a temporary version of the same node in the SOP network (not in APEX), set its parameters as you like, then plug it into a Python SOP with this code:
 ```
 node = hou.pwd()
 input = node.inputs()[0]
