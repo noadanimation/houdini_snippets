@@ -60,6 +60,100 @@ for node in nodes:
 currentnode.setSelectableTemplateFlag(True)
 ```
 
+### Update November 2026:
+Recently I broke through the limit of the above snippet - with a very detailed node network, you'll eventually run into a recursion error, and the code used to traverse the nodes gets very slow when run each frame for lots of nodes. To fix those issues I've rewritten the snippet to avoid the recursion, and split it into two scripts - the first script does the recursion and writes the traversed nodes to a detail attribute, the second script sets the visible node.
+
+To use these, create a Python node for each script, plug your node network into the first Python node (once it's calculated you can freeze the node so it doesn't recalculate every frame), and plug the output of that Python node into the second Python node. The script will cycle the template flag over each node in your network during playback while you're inside the SOP Geometry.
+
+#### Script 1:
+```
+import hou
+
+node = hou.pwd()
+geo = node.geometry()
+
+def filteredinputs(node):
+    inputs = node.inputs()
+    inputs = [x for x in inputs if x is not None]
+    return inputs
+    
+startnode = node.inputs()[0]
+
+currentlist = [[startnode,0,node]]
+pending = [[startnode,0,node]]
+visited = [node]
+newinputs = True
+branchhead = None
+branch = []
+
+maxgen = 5000
+while len(pending)>0 and maxgen > 0:
+    maxgen -= 1
+    now = pending.pop(0)
+    if branchhead == None:
+        branchhead = now[2]
+        branch = []
+    
+    inputs = filteredinputs(now[0])
+    
+    if not now[0] in visited:
+        branch.append(now[0])
+    if now[0] in visited or len(inputs)==0:
+        index = visited.index(branchhead)
+        visited = visited[0:index] + list(reversed(branch)) + visited[index:]
+        branchhead = None
+        continue
+    
+    for i, inputnode in enumerate(inputs):
+        if inputnode in visited: continue
+        data = [inputnode, now[1]+1, now[0]]
+        if i==0: 
+            pending.insert(0, data)
+        else:
+            pending.append(data)
+       
+print("Calculated nodes to visit: " + str(len(visited)))
+
+paths = ""
+for v in visited:
+    paths = paths + v.path() + ", "
+
+geo.addAttrib(hou.attribType.Global, "nodepaths", "/")
+geo.setGlobalAttribValue("nodepaths", paths)
+```
+#### Script 2
+```
+import hou
+
+node = hou.pwd()
+geo = node.geometry()
+       
+paths = geo.stringAttribValue("nodepaths").split(",")
+visited = []
+for p in paths:
+    p = p.strip()
+    if p == "": continue
+    visited.append(node.node(p))
+        
+print("Visiting " + str(len(visited)) + " nodes")
+
+startframe = int(hou.playbar.frameRange()[0])
+currentframe = hou.intFrame()
+
+offset = currentframe - startframe
+if(offset < 0): offset = 0
+elif(offset > len(visited)-1): offset = len(visited) - 1
+
+currentnode = visited[offset]
+if currentnode != node:
+    geo.clear()
+
+for node in visited:
+    node.setTemplateFlag(False)
+    node.setSelectableTemplateFlag(False)
+currentnode.setSelectableTemplateFlag(True)
+```
+
 ## Print SOP verb parameters
 When working with the new APEX graphs in Houdini 20, a lot of the "SOP verb" nodes have very opaque parameter menus, and it's hard to tell what settings to use.
 
