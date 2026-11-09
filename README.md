@@ -104,13 +104,15 @@ while len(pending)>0 and maxgen > 0:
         branchhead = None
         continue
     
+    newpending = []
     for i, inputnode in enumerate(inputs):
         if inputnode in visited: continue
+        if inputnode in branch: continue
         data = [inputnode, now[1]+1, now[0]]
-        if i==0: 
-            pending.insert(0, data)
-        else:
-            pending.append(data)
+        if data in newpending: continue
+        newpending.append(data)
+        
+    pending = newpending + pending
        
 print("Calculated nodes to visit: " + str(len(visited)))
 
